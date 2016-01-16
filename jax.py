@@ -2,25 +2,93 @@ from os import system
 from googlefinance import getQuotes
 import json
 import speech_recognition as sr
+import subprocess
+#global variables
+dataFile="test.txt"
+
 def say(text):
         system('say '+text)
-def getSummary(stock):
-        data=getQuotes(stock)
+
+def getStockData(stock):
+    #Returns stock price 
+    data=getQuotes(stock)
         for i in data:
                 sentence=i['StockSymbol']+" was traded at "+i['LastTradePrice']
-        say(sentence)
-def listen():
-	say("I am listening")
-        r = sr.Recognizer()
+    print json.dumps(data)
+    return sentence
+
+def listen(question):
+    #Asks question and returns speech to text
+        say(question)
+    r = sr.Recognizer()
         with sr.Microphone() as source:
             audio = r.listen(source)
         print(r.recognize_google(audio))
+    return r.recognize_google(audio).lower()
+
+def inFile(text):
+    #returns if a string is in a file
+    f=open(dataFile,'r')
+    if text.lower() in f.read():
+        return True
+        f.close()
+    else:
+        return False
+        f.close()
+
+def write(text):
+    #Writes text to the file
+    if not inFile(text):
+        f=open(dataFile,'a')
+        f.write(text.lower()+":\n")
+        f.close()
+
+def replace(original,replacement):
+    f=open(dataFile,'r')
+    data=f.read()
+    f.close()
+    print "old: " + data
+    data=data.replace(original,replacement)
+    print "new: " + data
+    f=open(dataFile,'w')
+    f.write(data)
+    f.close()
+
+def decode(text):
+    text=text.lower()
+    words=text.split(" ")
+    for i in len(words):
+        if words[i]=="open":
+            subprocess.call(["open",dataFile])
+        if words[i]=="switch":
+            #subprocess.call(["cd","Applications"])
+            #subprocess.call(["open","http://www.apple.com/","-a","Google Chrome"])
+            
+
+def test():
+    sentence=listen("Give me a command")
+    if inFile(sentence):
+        print sentence + " in file"
+    else:
+        write(sentence)
+
+# def graph():
+#    graph = {'A': ['B', 'C'],
+#              'B': ['C', 'D'],
+#              'C': ['D'],
+#              'D': ['C'],
+#              'E': ['F'],
+#              'F': ['C']}
 
 
 
 
 
 
-say('Hello, I am JACKS. What can I help you with?')
-
-                                          
+def init():
+    com=listen("speak please")
+    print type(com)
+    print "I heard "+com
+    if "stock" in com or "stocks" in com:
+        stock=listen("What stock would you like to research?").encode('ascii','ignore')
+        say(getStockData(stock))
