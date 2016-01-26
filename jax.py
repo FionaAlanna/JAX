@@ -1,5 +1,6 @@
 from os import system
 from googlefinance import getQuotes
+from random import randint
 import json
 import speech_recognition as sr
 import subprocess
@@ -26,6 +27,8 @@ def listen(question):
         print(r.recognize_google(audio))
     return r.recognize_google(audio).lower()
 
+#File interaction methods=============
+
 def inFile(text):
     #returns if a string is in a file
     f=open(dataFile,'r')
@@ -36,7 +39,7 @@ def inFile(text):
         return False
         f.close()
 
-def write(text):
+def writeCommand(text):
     #Writes text to the file
     if not inFile(text):
         f=open(dataFile,'a')
@@ -51,19 +54,49 @@ def replace(original,replacement):
     data=data.replace(original,replacement)
     print "new: " + data
     f=open(dataFile,'w')
-    f.write(data)
+    f.writeCommand(data)
     f.close()
+
+#=====================================
+
+#Responses============================
+def getRandomResponse():
+    f=open('jaxResponses.txt','r')
+    data=f.readlines()
+    f.close()
+    com=data[randint(1,len(data)-1)]
+    return com[com.find("|;|")+3:].rstrip('\n')
+def getConnotationResponse(number):
+    f=open('jaxResponses.txt','r')
+    data=f.readlines()
+    f.close()
+    contained=False
+    choices=[]
+    for com in data:
+        if "|:|"+str(number)+"|;|" in com:
+            choices.append(com[com.find("|;|")+3:].rstrip('\n'))
+            contained=True
+    if contained:
+        return choices
+    else:
+        return False
+
+#=====================================
+
+
 
 def decode(text):
     text=text.lower()
     words=text.split(" ")
-    for i in len(words):
+    for i in range(0,len(words)):
+        print type(i)
         if words[i]=="open":
-            subprocess.call(["open",dataFile])
+            #subprocess.call(["cd","Desktop"])
+            subprocess.call(["open",words[i+1]])
         if words[i]=="switch":
+            print "switch"
             #subprocess.call(["cd","Applications"])
             #subprocess.call(["open","http://www.apple.com/","-a","Google Chrome"])
-            
 
 def test():
     sentence=listen("Give me a command")
