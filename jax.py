@@ -14,8 +14,6 @@ loud=False
 
 
 #Utilities 
-def testCon():
-	print connected
 def testConnection():
 	data=subprocess.check_output(["/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport","-I"])
 	try:
@@ -28,28 +26,35 @@ def testConnection():
 		return False
 		pass
 
-
 def getStockData(stock):
 	#Returns stock price 
-	data=getQuotes(stock)
-        for i in data:
-                sentence=i['StockSymbol']+" was traded at "+i['LastTradePrice']+" at "+i["LastTradeTime"]
+	try:
+		data=getQuotes(stock)
+		for i in data:
+			sentence=i['StockSymbol']+" was traded at "+i['LastTradePrice']+" at "+i["LastTradeTime"]
+		return sentence
+	except:
+		say("Error, could not find stock "+ stock)
+	
 	#print json.dumps(data)
-	return sentence
+	
 
-def changeSettings(value=None):
+def changeDefaultSettings(key=None,value=None):
+#Change the default settings for JAX	
 	global loud
 	global connected
-	if value==None:
-		cmd=raw_input("Enter the variable you wish to change, or ls for possibilities: ").lower()
+	if key==None:
+		cmd=getAnswer("Enter the variable you wish to change, or ls for possibilities: ").lower()
 	else:
-		cmd=value
+		cmd=key
 	if cmd == "ls":
 		print "\nloud: ("+str(loud)+") True, False\nconnected: ("+str(connected)+") True, False \n"
-		changeSettings()
+		changeDefaultSettings()
 	elif any(x in cmd for x in ["loud","connected"]):
-			answer=raw_input("What would you like to change it to?\n:").lower()
-			replaceJson(settingsFile,cmd,answer)
+			if value==None:
+				value=getAnswer("What would you like to change it to?")
+				value=value.lower()
+			replaceJson(settingsFile,cmd,value)
 	else:
 		print("Variable not recognized")
 
@@ -82,25 +87,20 @@ def replaceJson(file,key,value):
 	with open(file,'w') as outfile:
 		json.dump(data, outfile)
 
-def readJson(file,key):
-	with open(file) as data_file:
-		data = json.load(data_file)
-	return data[key]
-
 def setSettings():
 	global loud
 	global connected
-	loud="true" == readJson(settingsFile,"loud")
-	connected="false" == readJson(settingsFile,"connected") and testConnection()
+	loud= "true"==readJson(settingsFile,"loud").lower() 
+	connected="true" == readJson(settingsFile,"connected").lower() and testConnection()
 #==========================
 
 
 #Communication
 
 def getAnswer(question,loud=None,connection=None):
-	#Asks question and returns speech to text
+#Asks question and returns speech to text
 
-	if connection == True:
+	if connected == True:
 		say(question)
 		r = sr.Recognizer()
 		with sr.Microphone() as source:
@@ -110,22 +110,16 @@ def getAnswer(question,loud=None,connection=None):
 	else:
 		say(question)
 		return raw_input(": ").lower()
-		
-
 
 def say(text):
+    print text
     if loud==True:
     	system('say '+text)
-    else:
-    	print text
+    
 
 
 
 #==========================
-
-
-
-
 
 
 # File interaction methods=============
@@ -157,6 +151,12 @@ def replace(original,replacement):
 	f=open(dataFile,'w')
 	f.writeCommand(data)
 	f.close()
+
+def readJson(file,key):
+	with open(file) as data_file:
+		data = json.load(data_file)
+	return data[key]
+
 
 #=====================================
 
@@ -215,7 +215,7 @@ def test():
 
 
 
-#Startup processes 
+
 
 def setup():
 	global connected
@@ -236,23 +236,23 @@ def setup():
 	else:
 		say("Then I won't speak!")
 
-
-
-
-
-
-# init();
-
-
-
+def executeCommand(command):
+	if "stock" in command:
+		stock=getAnswer("What stock would you like to research?").encode('ascii','ignore')
+		say(getStockData(stock))
+	if "setting" in command:
+		changeDefaultSettings()
+	if "ls" in command:
+		print "loud: ("+str(loud)+") True, False\nconnected: ("+str(connected)+") True, False \n"
 
 #==========================
 
-
-
-
-
-
+def startup():
+	setSettings()
+	userInput=""
+	while userInput!="quit":
+		userInput=getAnswer("What can I do for you, quit for exit.")
+		executeCommand(userInput)
 
 
 def init():
@@ -261,3 +261,10 @@ def init():
 	if "stock" in com or "stocks" in com:
 		stock=getAnswer("What stock would you like to research?").encode('ascii','ignore')
 		say(getStockData(stock))
+
+
+
+
+
+#Startup processes 
+startup()
