@@ -1,0 +1,8 @@
+#affiliations;connotation score;text
+null|:|10|;|yes
+null|:|-10|;|no
+null|:|5|;|maybe
+null|:|10|;|yes sir
+null|:|-10|;|no sir
+null|:|10|;|yes conor
+null|:|-10|;|no conor

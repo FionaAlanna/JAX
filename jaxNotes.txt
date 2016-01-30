@@ -1,0 +1,10 @@
+Idea:
+
+1.
+Programming jax
+You can tell him to make a div, or a paragraph, or copy a website
+
+2.
+Stock jax
+You can ask him to give you info about stocks. Or to program a stock analysis
+
