@@ -1,4 +1,5 @@
-from os import system
+# from os import system
+import os
 from googlefinance import getQuotes
 from random import randint
 import json
@@ -6,8 +7,9 @@ import speech_recognition as sr
 import re
 import subprocess
 #global variables
-dataFile='test.txt'
+dataFile='jaxData.txt'
 settingsFile='jaxSettings.json'
+commandFile="jaxCommands.json"
 connected = False
 loud=False
 
@@ -48,7 +50,10 @@ def changeDefaultSettings(key=None,value=None):
 	else:
 		cmd=key
 	if cmd == "ls":
-		print "\nloud: ("+str(loud)+") True, False\nconnected: ("+str(connected)+") True, False \n"
+		template = "{0:20}{1:20}{2:20}"
+		print template.format("Variable","Current","Options")
+		print template.format("loud:",str(loud),"True, False")
+		print template.format("connected:",str(connected),"True, False")+"\n"
 		changeDefaultSettings()
 	elif any(x in cmd for x in ["loud","connected"]):
 			if value==None:
@@ -61,32 +66,6 @@ def changeDefaultSettings(key=None,value=None):
 	setSettings()
 
 
-	# elif cmd=="loud":
-	# 	loud=raw_input("What would you like to change it to?\n:")
-	# 	loud="True" in loud
-	# 	replaceJson(settingsFile,cmd,loud)
-	# elif cmd=="connected":
-	# 	answer=raw_input("What would you like to change it to?\n:")
-	# 	if any(x in answer for x in ["true","yes"]) and testConnection()==True:
-	# 		connected=True
-	# 		replaceJson(settingsFile,cmd,connected)
-	# 	elif any(x in answer for x in ["true","yes"]) and testConnection()==False:
-	# 		print("Sorry, your internet is not fast enough.\n")
-	# 		connected=False
-	# 		replaceJson(settingsFile,cmd,connected)
-	# 	else:
-	# 		connected=False
-	# 		replaceJson(settingsFile,cmd,connected)
-
-
-
-def replaceJson(file,key,value):
-	with open(file) as data_file:
-		data = json.load(data_file)
-	data[key]=value
-	with open(file,'w') as outfile:
-		json.dump(data, outfile)
-
 def setSettings():
 	global loud
 	global connected
@@ -97,8 +76,15 @@ def setSettings():
 
 #Communication
 
-def getAnswer(question,loud=None,connection=None):
+def getAnswer(question,connection=None,louder=None):
 #Asks question and returns speech to text
+	global loud
+	global connected
+	if connection!=None:
+		connected=connection
+	if loud!=None:
+		loud=louder
+
 
 	if connected == True:
 		say(question)
@@ -116,9 +102,6 @@ def say(text):
     if loud==True:
     	system('say '+text)
     
-
-
-
 #==========================
 
 
@@ -133,6 +116,7 @@ def inFile(text):
 	else:
 		return False
 		f.close()
+	
 
 def writeCommand(text):
 	#Writes text to the file
@@ -152,11 +136,62 @@ def replace(original,replacement):
 	f.writeCommand(data)
 	f.close()
 
-def readJson(file,key):
-	with open(file) as data_file:
-		data = json.load(data_file)
-	return data[key]
 
+
+
+
+def readJson(datFile,key):
+	try:
+		with open(datFile) as data_file:
+			data = json.load(data_file)
+		return data[key]
+	except:
+	 	return False
+
+def appendJson(datFile,key,value):
+	with open(datFile) as data_file:
+		data = json.load(data_file)
+		if not data.has_key(key):
+			data[key] = value
+	with open(datFile,'w') as outfile:
+		json.dump(data, outfile)
+
+def deleteJson(datFile,key):
+	data  = json.load(open(datFile))                                                 
+	for i in data:
+		del i[key]
+		break
+
+def replaceJson(datFile,key,value):
+	with open(datFile) as data_file:
+		data = json.load(data_file)
+	data[key]=value
+	with open(datFile,'w') as outfile:
+		json.dump(data, outfile)
+	outfile.close()
+
+def jsonifyCommand(com):
+	command=readJson(commandFile,com)
+	if command==False:
+		value=raw_input("This command has not been used before, please enter in the command\n")
+		appendJson(commandFile,com,value)
+		executeCommand(value)
+	else:
+		executeCommand(command)
+
+def editCommands(string=None,command=None):
+	if string!=None and command!=None:
+		replaceJson(commandFile,string,command)
+	elif string!=None and command==None:
+		replaceJson(commandFile,string,raw_input("Replace current command with:\n"))
+	else:
+		with open(commandFile) as data_file:
+			data=json.load(data_file)
+		template = "{0:20}{1:20}"
+		print template.format("String","Command")
+		for x in data:
+			print template.format(x,data[x])
+			
 
 #=====================================
 
@@ -168,6 +203,7 @@ def getRandomResponse():
 	f.close()
 	com=data[randint(1,len(data)-1)]
 	return com[com.find("|;|")+3:].rstrip('\n')
+
 def getConnotationResponse(number):
 	f=open('jaxResponses.txt','r')
 	data=f.readlines()
@@ -185,13 +221,9 @@ def getConnotationResponse(number):
 
 #=====================================
 
-
-
 def decode(text):
-	text=text.lower()
 	words=text.split(" ")
-	for i in range(0,len(words)):
-		print type(i)
+	for i in range(0,len(words)-1):
 		if words[i]=="open":
 			#subprocess.call(["cd","Desktop"])
 			subprocess.call(["open",words[i+1]])
@@ -199,6 +231,7 @@ def decode(text):
 			print "switch"
 			#subprocess.call(["cd","Applications"])
 			#subprocess.call(["open","http://www.apple.com/","-a","Google Chrome"])
+
 
 def test():
 	sentence=getAnswer("Give me a command",)
@@ -213,9 +246,25 @@ def test():
 # def init():
 # 	command=getAnswer("Hello User, my name is jacks. How can I help you today?")
 
-
-
-
+def grabFile(destFile):
+	name=subprocess.check_output("whoami").rstrip()
+	paths = [line[2:] for line in subprocess.check_output("find . -iname '"+destFile+"'", shell=True,cwd="/Users/"+name).splitlines()]
+	if paths==[]:
+		print "No file found"
+	elif len(paths)==1:
+		subprocess.call(["open",paths[0]],cwd="/Users/"+name)
+	else:
+		i=1
+		for string in paths:
+			print str(i) +":  "+ string + "\n"  
+			i=i+1
+		# print "which path?\n"+'\n'.join(paths)
+		number=int(getAnswer("Which path?"))
+		if number<len(paths) and number>0:
+			subprocess.call(["open",paths[number-1]],cwd="/Users/"+name)
+		else:
+			say("Index out of range")
+		
 
 def setup():
 	global connected
@@ -230,41 +279,43 @@ def setup():
 		say("Your internet is not fast enough for JAX voice communication, you will have to talk to him through text.")
 
 	answer=getAnswer("Do you want JAX to speak?")
-	if any(x in answer for x in ["yes","y","yep"] ):
+	if any(x in answer for x in ["yes","y","yea"] ):
 		loud=True
 		say("Then I will speak")
 	else:
 		say("Then I won't speak!")
 
 def executeCommand(command):
+	command=command.split()
 	if "stock" in command:
 		stock=getAnswer("What stock would you like to research?").encode('ascii','ignore')
 		say(getStockData(stock))
-	if "setting" in command:
+	if "settings" in command:
 		changeDefaultSettings()
 	if "ls" in command:
-		print "loud: ("+str(loud)+") True, False\nconnected: ("+str(connected)+") True, False \n"
+		
+		template = "{0:20}{1:20}{2:20}"
+		print template.format("Variable","Current","Options")
+		print template.format("loud:",str(loud),"True, False")
+		print template.format("connected:",str(connected),"True, False")+"\n"
+	if "open" in command:
+		if len(command)==2:
+			grabFile(command[1])
+		else:
+			grabFile(getAnswer("What file would you like to open?"))
+		#build reload command 
+
 
 #==========================
 
 def startup():
 	setSettings()
 	userInput=""
-	while userInput!="quit":
-		userInput=getAnswer("What can I do for you, quit for exit.")
-		executeCommand(userInput)
-
-
-def init():
-	com=getAnswer("What can I do for you today")
-	say("I heard "+com)
-	if "stock" in com or "stocks" in com:
-		stock=getAnswer("What stock would you like to research?").encode('ascii','ignore')
-		say(getStockData(stock))
-
-
-
+	while userInput!="quit()":
+		userInput=getAnswer("What can I do for you, quit() for exit.")
+		jsonifyCommand(userInput)
 
 
 #Startup processes 
+
 startup()
