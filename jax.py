@@ -1,4 +1,4 @@
-# from os import system
+from os import system
 import os
 from googlefinance import getQuotes
 from random import randint
@@ -11,7 +11,7 @@ dataFile='jaxData.txt'
 settingsFile='jaxSettings.json'
 commandFile="jaxCommands.json"
 connected = False
-loud=False
+loud = False
 
 
 
@@ -78,12 +78,12 @@ def setSettings():
 
 def getAnswer(question,connection=None,louder=None):
 #Asks question and returns speech to text
-	global loud
-	global connected
-	if connection!=None:
-		connected=connection
-	if loud!=None:
-		loud=louder
+	# global loud
+	# global connected
+	# if connection!=None:
+	# 	connected=connection
+	# if loud!=None:
+	# 	loud=louder
 
 
 	if connected == True:
@@ -171,6 +171,13 @@ def replaceJson(datFile,key,value):
 	outfile.close()
 
 def jsonifyCommand(com):
+	#exlusions:
+	if "google" in com and "open" not in com:
+		executeCommand(com)
+		return
+
+
+
 	command=readJson(commandFile,com)
 	if command==False:
 		value=raw_input("This command has not been used before, please enter in the command\n")
@@ -183,7 +190,10 @@ def editCommands(string=None,command=None):
 	if string!=None and command!=None:
 		replaceJson(commandFile,string,command)
 	elif string!=None and command==None:
-		replaceJson(commandFile,string,raw_input("Replace current command with:\n"))
+		if getAnswer("Replace or delete?")=="replace":
+			replaceJson(commandFile,string,raw_input("Replace current command with\n:"))
+		else:
+			deleteJson(commandFile,string)
 	else:
 		with open(commandFile) as data_file:
 			data=json.load(data_file)
@@ -191,6 +201,7 @@ def editCommands(string=None,command=None):
 		print template.format("String","Command")
 		for x in data:
 			print template.format(x,data[x])
+		editCommands(getAnswer("Which command would you like to edit?"))
 			
 
 #=====================================
@@ -293,7 +304,6 @@ def executeCommand(command):
 	if "settings" in command:
 		changeDefaultSettings()
 	if "ls" in command:
-		
 		template = "{0:20}{1:20}{2:20}"
 		print template.format("Variable","Current","Options")
 		print template.format("loud:",str(loud),"True, False")
@@ -304,15 +314,41 @@ def executeCommand(command):
 		else:
 			grabFile(getAnswer("What file would you like to open?"))
 		#build reload command 
+	if "openb" in command:
+		subprocess.call(["open",command[1]])
+	if "clear" in command:
+		subprocess.call("clear")
 
+	if "edit" in command and "commands" in command:
+		editCommands()
+
+
+	if "google" in command and "open" not in command:
+		search=""
+		word=""
+		for word in command:
+			if word!="google":
+				search=search+" "+word
+		subprocess.call(["open","http://www.google.com/search?q="+search])
+
+
+
+
+	if "help" in command:
+		template = "{0:10}{1:30}"
+		print template.format("Command","Meaning")
+		print template.format("ls","List all current settings for JAX")
+		print template.format("open","Open any file")
+		print template.format("stock","Get information on any stock")
+		print template.format("settings","Change default settings of JAX. Will take effect immediately.")
 
 #==========================
 
 def startup():
 	setSettings()
 	userInput=""
-	while userInput!="quit()":
-		userInput=getAnswer("What can I do for you, quit() for exit.")
+	while userInput!="quit()" and userInput!="quit":
+		userInput=getAnswer("What can I do for you, quit for exit.")
 		jsonifyCommand(userInput)
 
 
