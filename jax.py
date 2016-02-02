@@ -65,7 +65,6 @@ def changeDefaultSettings(key=None,value=None):
 
 	setSettings()
 
-
 def setSettings():
 	global loud
 	global connected
@@ -84,8 +83,6 @@ def getAnswer(question,connection=None,louder=None):
 	# 	connected=connection
 	# if loud!=None:
 	# 	loud=louder
-
-
 	if connected == True:
 		say(question)
 		r = sr.Recognizer()
@@ -117,7 +114,6 @@ def inFile(text):
 		return False
 		f.close()
 	
-
 def writeCommand(text):
 	#Writes text to the file
 	if not inFile(text):
@@ -135,10 +131,6 @@ def replace(original,replacement):
 	f=open(dataFile,'w')
 	f.writeCommand(data)
 	f.close()
-
-
-
-
 
 def readJson(datFile,key):
 	try:
@@ -180,14 +172,16 @@ def jsonifyCommand(com):
 
 	command=readJson(commandFile,com)
 	if command==False:
-		value=raw_input("This command has not been used before, please enter in the command\n")
+		value=raw_input("This command has not been used before, please enter in the command\n:")
 		appendJson(commandFile,com,value)
 		executeCommand(value)
 	else:
 		executeCommand(command)
 
 def editCommands(string=None,command=None):
-	if string!=None and command!=None:
+	if string=="none":
+		return
+	elif string!=None and command!=None:
 		replaceJson(commandFile,string,command)
 	elif string!=None and command==None:
 		if getAnswer("Replace or delete?")=="replace":
@@ -197,11 +191,11 @@ def editCommands(string=None,command=None):
 	else:
 		with open(commandFile) as data_file:
 			data=json.load(data_file)
-		template = "{0:20}{1:20}"
+		template = "{0:30}{1:30}"
 		print template.format("String","Command")
 		for x in data:
 			print template.format(x,data[x])
-		editCommands(getAnswer("Which command would you like to edit?"))
+		editCommands(getAnswer("Which command would you like to edit? None to cancel."))
 			
 
 #=====================================
@@ -254,10 +248,10 @@ def test():
 #====================================
 
 #Startup processes 
-# def init():
-# 	command=getAnswer("Hello User, my name is jacks. How can I help you today?")
 
 def grabFile(destFile):
+	if "." not in destFile:
+		destFile=destFile+".*"
 	name=subprocess.check_output("whoami").rstrip()
 	paths = [line[2:] for line in subprocess.check_output("find . -iname '"+destFile+"'", shell=True,cwd="/Users/"+name).splitlines()]
 	if paths==[]:
@@ -301,27 +295,31 @@ def executeCommand(command):
 	if "stock" in command:
 		stock=getAnswer("What stock would you like to research?").encode('ascii','ignore')
 		say(getStockData(stock))
+	
 	if "settings" in command:
 		changeDefaultSettings()
+	
 	if "ls" in command:
 		template = "{0:20}{1:20}{2:20}"
 		print template.format("Variable","Current","Options")
 		print template.format("loud:",str(loud),"True, False")
 		print template.format("connected:",str(connected),"True, False")+"\n"
+	
 	if "open" in command:
 		if len(command)==2:
 			grabFile(command[1])
 		else:
 			grabFile(getAnswer("What file would you like to open?"))
 		#build reload command 
+	
 	if "openb" in command:
 		subprocess.call(["open",command[1]])
+	
 	if "clear" in command:
 		subprocess.call("clear")
 
 	if "edit" in command and "commands" in command:
 		editCommands()
-
 
 	if "google" in command and "open" not in command:
 		search=""
@@ -330,9 +328,6 @@ def executeCommand(command):
 			if word!="google":
 				search=search+" "+word
 		subprocess.call(["open","http://www.google.com/search?q="+search])
-
-
-
 
 	if "help" in command:
 		template = "{0:10}{1:30}"
