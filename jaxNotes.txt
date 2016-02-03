@@ -1,4 +1,4 @@
-Idea:
+Ideas:
 
 1.
 Programming jax
@@ -8,3 +8,13 @@ You can tell him to make a div, or a paragraph, or copy a website
 Stock jax
 You can ask him to give you info about stocks. Or to program a stock analysis
 
+3.
+do math
+
+LEARNING NETWORK
+
+A ——> numX/Total ——> B
+A ——> numY/Total ——> C
+A ——> numZ/Total ——> D
+
+A robot you can teach concepts to better teach yourself
