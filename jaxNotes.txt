@@ -18,3 +18,4 @@ A ——> numY/Total ——> C
 A ——> numZ/Total ——> D
 
 A robot you can teach concepts to better teach yourself
+He can extrapolate, search online for practice problems, and 
