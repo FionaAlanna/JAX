@@ -10,6 +10,7 @@ import subprocess
 dataFile='jaxData.txt'
 settingsFile='jaxSettings.json'
 commandFile="jaxCommands.json"
+studyFile="jaxStudy.json"
 connected = False
 loud = False
 
@@ -87,7 +88,7 @@ def getAnswer(question,connection=None,louder=None):
 		say(question)
 		r = sr.Recognizer()
 		with sr.Microphone() as source:
-			audio = r.listen(source)
+			audio = r.listen(source,timeout=None)
 		# print r.recognize_google(audio).lower()
 		return r.recognize_google(audio).lower()
 	else:
@@ -132,44 +133,83 @@ def replace(original,replacement):
 	f.writeCommand(data)
 	f.close()
 
-def readJson(datFile,key):
+def readJson(datFile,key,upperKey=None):
 	try:
 		with open(datFile) as data_file:
 			data = json.load(data_file)
-		return data[key]
+		if upperKey==None:
+			return data[key]
+		else:
+			return data[upperKey][key]
 	except:
 	 	return False
+# def readLowerJson(datFile,upperKey,key):
+# 	try:
+# 		with open(datFile) as data_file:
+# 			data = json.load(data_file)
+# 		return data[upperKey][key]
+# 	except:
+# 	 	return False
 
-def appendJson(datFile,key,value):
+def appendJson(datFile,key,value,upperKey=None):
 	with open(datFile) as data_file:
 		data = json.load(data_file)
-		if not data.has_key(key):
-			data[key] = value
+		if upperKey==None:
+			if not data.has_key(key):
+				data[key] = value
+		else:
+			if not data[upperKey].has_key(key):
+				data[upperKey][key]=value
 	with open(datFile,'w') as outfile:
 		json.dump(data, outfile)
 
-def deleteJson(datFile,key):
-	data  = json.load(open(datFile))                                                 
-	for i in data:
-		del i[key]
-		break
+# def appendLowerJson(datFile,upperKey,key,value):
+# 	with open(datFile) as data_file:
+# 		data = json.load(data_file)
+# 		if not data[upperKey].has_key(key):
+# 			data[upperKey][key]=value
+# 	with open(datFile,'w') as outfile:
+# 		json.dump(data, outfile)
 
-def replaceJson(datFile,key,value):
+def deleteJson(datFile,key,upperKey=None):
+	with open(datFile) as data_file:
+		data  = json.load(data_file)                                                
+	if upperKey==None:
+		del data[key]
+	else:
+		del data[upperKey][key]
+	with open(datFile,'w') as outfile:
+		json.dump(data,outfile)
+
+# def deleteLowerJson(datFile,upperKey,key):
+# 	with open(datFile) as data_file:
+# 		data = json.load(data_file)
+# 	del data[upperKey][key]
+# 	with open(datFile,'w') as outfile:
+# 		json.dump(data, outfile)
+
+def replaceJson(datFile,key,value,upperKey=None):
 	with open(datFile) as data_file:
 		data = json.load(data_file)
-	data[key]=value
+	if upperKey==None:
+		data[key]=value
+	else:
+		data[upperKey][key]=value
 	with open(datFile,'w') as outfile:
 		json.dump(data, outfile)
-	outfile.close()
+
+# def replaceLowerJson(datFile,upperKey,key,value):
+# 	with open(datFile) as data_file:
+# 		data = json.load(data_file)
+# 	data[upperKey][key]=value
+# 	with open(datFile,'w') as outfile:
+# 		json.dump(data, outfile)
 
 def jsonifyCommand(com):
 	#exlusions:
 	if "google" in com and "open" not in com:
 		executeCommand(com)
 		return
-
-
-
 	command=readJson(commandFile,com)
 	if command==False:
 		value=raw_input("This command has not been used before, please enter in the command\n:")
@@ -269,7 +309,30 @@ def grabFile(destFile):
 			subprocess.call(["open",paths[number-1]],cwd="/Users/"+name)
 		else:
 			say("Index out of range")
+#====================================
+#STUDY BUDDY=========================
+def studyBuddy(subject=None):
+	if subject==None:
+		subject=getAnswer("What subject would you like to go over?")
+	data=readJson(studyFile,subject)
+	if  data== False:
+		if "yes" not in getAnswer("This subject has not been covered, start a new subject?"):
+			return 
+		else:
+			appendJson(studyFile,subject,{})
+	say("Teach me")
+	com="c"
+	while  com=="c":
+		key=getAnswer("Question: ")
+		value=getAnswer("Answer: ")
+		appendJson(studyFile,key,value,subject)
+		com=getAnswer("c to continue")
 		
+
+
+
+
+#====================================		
 
 def setup():
 	global connected
@@ -328,6 +391,12 @@ def executeCommand(command):
 			if word!="google":
 				search=search+" "+word
 		subprocess.call(["open","http://www.google.com/search?q="+search])
+	if "study" in command:
+		if len(command)==1:
+			studyBuddy()
+		else:
+			studyBuddy(command[1])
+
 
 	if "help" in command:
 		template = "{0:10}{1:30}"
@@ -343,7 +412,7 @@ def startup():
 	setSettings()
 	userInput=""
 	while userInput!="quit()" and userInput!="quit":
-		userInput=getAnswer("What can I do for you, quit for exit.")
+		userInput=getAnswer("What can I do for you")
 		jsonifyCommand(userInput)
 
 
