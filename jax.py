@@ -13,7 +13,8 @@ commandFile="jaxCommands.json"
 studyFile="jaxStudy.json"
 connected = False
 loud = False
-
+r = sr.Recognizer()
+m = sr.Microphone()
 
 
 #Utilities 
@@ -88,12 +89,19 @@ def getAnswer(question,connection=None,louder=None):
 		say(question)
 		r = sr.Recognizer()
 		with sr.Microphone() as source:
-			audio = r.listen(source,timeout=None)
+			audio = r.listen(source,timeout=100)
 		# print r.recognize_google(audio).lower()
 		return r.recognize_google(audio).lower()
 	else:
 		say(question)
 		return raw_input(": ").lower()
+
+
+def callback(recognizer,audio):
+	print "Google Speech Recognition thinks you said " + recognizer.recognize_google(audio)
+      	
+
+
 
 def say(text):
     print text
@@ -447,8 +455,16 @@ def executeCommand(command):
 def startup():
 	setSettings()
 	userInput=""
+	with m as source:
+		r.adjust_for_ambient_noise(source)
+	stop_listening = r.listen_in_background(m, callback)
+	import time
+	time.sleep(1)
+	stop_listening()
+	
+
 	while userInput!="quit()" and userInput!="quit":
-		userInput=getAnswer("What can I do for you")
+		userInput=getAnswer("Command")
 		jsonifyCommand(userInput)
 
 
