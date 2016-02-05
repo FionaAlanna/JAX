@@ -174,12 +174,15 @@ def appendJson(datFile,key,value,upperKey=None):
 def deleteJson(datFile,key,upperKey=None):
 	with open(datFile) as data_file:
 		data  = json.load(data_file)                                                
-	if upperKey==None:
-		del data[key]
-	else:
-		del data[upperKey][key]
-	with open(datFile,'w') as outfile:
-		json.dump(data,outfile)
+	try:
+		if upperKey==None:
+			del data[key]
+		else:
+			del data[upperKey][key]
+		with open(datFile,'w') as outfile:
+			json.dump(data,outfile)
+	except:
+		return False
 
 # def deleteLowerJson(datFile,upperKey,key):
 # 	with open(datFile) as data_file:
@@ -207,13 +210,25 @@ def replaceJson(datFile,key,value,upperKey=None):
 
 def jsonifyCommand(com):
 	#exlusions:
+	splitc=com.split()
 	if "google" in com and "open" not in com:
 		executeCommand(com)
 		return
+	if any(x in splitc for x in ["craigslist","buy","c"]):
+		if len(splitc)==3:
+			# buy datsun fresno
+			executeCommand("openb "+"https://"+splitc[2]+".craigslist.org/search/sss?sort=rel&query="+splitc[1])
+			return
+
 	command=readJson(commandFile,com)
 	if command==False:
 		value=raw_input("This command has not been used before, please enter in the command\n:")
-		appendJson(commandFile,com,value)
+		if any(x in value for x in ["copy","cp"]):
+			value=value.replace("copy ","")
+			value=readJson(commandFile,value)
+			appendJson(commandFile,com,value)
+		else:
+			appendJson(commandFile,com,value)
 		executeCommand(value)
 	else:
 		executeCommand(command)
@@ -222,12 +237,19 @@ def editCommands(string=None,command=None):
 	if string=="none":
 		return
 	elif string!=None and command!=None:
-		replaceJson(commandFile,string,command)
+		if readJson(commandFile,string)!=False:
+			replaceJson(commandFile,string,command)
+		else:
+			editCommands(getAnswer("Command not found, please retype"))
+
 	elif string!=None and command==None:
-		if getAnswer("Replace or delete?")=="replace":
+		if readJson(commandFile,string)==False:
+			editCommands(getAnswer("Command not found, please retype"))
+		elif getAnswer("Replace or delete?")=="replace":
 			replaceJson(commandFile,string,raw_input("Replace current command with\n:"))
 		else:
 			deleteJson(commandFile,string)
+	
 	else:
 		with open(commandFile) as data_file:
 			data=json.load(data_file)
@@ -328,9 +350,16 @@ def studyBuddy(subject=None):
 		appendJson(studyFile,key,value,subject)
 		com=getAnswer("c to continue")
 		
-
-
-
+def viewSubject(subject):
+	# try:
+		with open(studyFile) as data_file:
+			data = json.load(data_file)
+		template = "{0:40}{1:40}"
+		data=data[subject]
+		for x in data:
+			print template.format(x,data[x])
+	# except:
+	#  	return False
 
 #====================================		
 
@@ -356,7 +385,13 @@ def setup():
 def executeCommand(command):
 	command=command.split()
 	if "stock" in command:
-		stock=getAnswer("What stock would you like to research?").encode('ascii','ignore')
+		if len(command)==2:
+			if command[1]!="stock":
+				stock=command[1]
+			else:
+				stock=command[0]
+		else:
+			stock=getAnswer("What stock would you like to research?").encode('ascii','ignore')
 		say(getStockData(stock))
 	
 	if "settings" in command:
@@ -391,6 +426,7 @@ def executeCommand(command):
 			if word!="google":
 				search=search+" "+word
 		subprocess.call(["open","http://www.google.com/search?q="+search])
+	
 	if "study" in command:
 		if len(command)==1:
 			studyBuddy()
