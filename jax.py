@@ -6,11 +6,13 @@ import json
 import speech_recognition as sr
 import re
 import subprocess
+import shelve
 #global variables
-dataFile='jaxData.txt'
-settingsFile='jaxSettings.json'
-commandFile="jaxCommands.json"
-studyFile="jaxStudy.json"
+user = "conor"
+dataFile=user+'JaxData.txt'
+settingsFile=user+'JaxSettings.json'
+commandFile=user+"JaxCommands.json"
+studyFile=user+"JaxStudy.json"
 connected = False
 loud = False
 r = sr.Recognizer()
@@ -57,21 +59,35 @@ def changeDefaultSettings(key=None,value=None):
 		print template.format("loud:",str(loud),"True, False")
 		print template.format("connected:",str(connected),"True, False")+"\n"
 		changeDefaultSettings()
+
 	elif any(x in cmd for x in ["loud","connected"]):
 			if value==None:
 				value=getAnswer("What would you like to change it to?")
 				value=value.lower()
 			replaceJson(settingsFile,cmd,value)
+
 	else:
 		print("Variable not recognized")
 
 	setSettings()
 
-def setSettings():
+def setLocalSettings(variable,value):
+	if variable=="loud":
+		global loud
+		loud="true" in value.lower()
+	elif variable=="connected":
+		global connected
+		connected="true" in value.lower()
+	elif variable == "user":
+		global user
+		user= value.lower()
+
+def getDefaultSettings():
 	global loud
 	global connected
 	loud= "true"==readJson(settingsFile,"loud").lower() 
 	connected="true" == readJson(settingsFile,"connected").lower() and testConnection()
+	user=readJson(settingsFile,"user")
 #==========================
 
 
@@ -91,15 +107,18 @@ def getAnswer(question,connection=None,louder=None):
 		with sr.Microphone() as source:
 			audio = r.listen(source,timeout=100)
 		# print r.recognize_google(audio).lower()
-		return r.recognize_google(audio).lower()
+		try:
+			return r.recognize_google(audio).lower()
+		except sr.UnknownValueError:
+			getAnswer("Did not understand, please repeat")
+		except sr.RequestError:
+			say("Could not connect, please switch off connected")
+
 	else:
 		say(question)
 		return raw_input(": ").lower()
 
 
-def callback(recognizer,audio):
-	print "Google Speech Recognition thinks you said " + recognizer.recognize_google(audio)
-      	
 
 
 
@@ -151,13 +170,6 @@ def readJson(datFile,key,upperKey=None):
 			return data[upperKey][key]
 	except:
 	 	return False
-# def readLowerJson(datFile,upperKey,key):
-# 	try:
-# 		with open(datFile) as data_file:
-# 			data = json.load(data_file)
-# 		return data[upperKey][key]
-# 	except:
-# 	 	return False
 
 def appendJson(datFile,key,value,upperKey=None):
 	with open(datFile) as data_file:
@@ -169,15 +181,7 @@ def appendJson(datFile,key,value,upperKey=None):
 			if not data[upperKey].has_key(key):
 				data[upperKey][key]=value
 	with open(datFile,'w') as outfile:
-		json.dump(data, outfile)
-
-# def appendLowerJson(datFile,upperKey,key,value):
-# 	with open(datFile) as data_file:
-# 		data = json.load(data_file)
-# 		if not data[upperKey].has_key(key):
-# 			data[upperKey][key]=value
-# 	with open(datFile,'w') as outfile:
-# 		json.dump(data, outfile)
+		json.dump(data, outfile,sort_keys=True)
 
 def deleteJson(datFile,key,upperKey=None):
 	with open(datFile) as data_file:
@@ -192,13 +196,6 @@ def deleteJson(datFile,key,upperKey=None):
 	except:
 		return False
 
-# def deleteLowerJson(datFile,upperKey,key):
-# 	with open(datFile) as data_file:
-# 		data = json.load(data_file)
-# 	del data[upperKey][key]
-# 	with open(datFile,'w') as outfile:
-# 		json.dump(data, outfile)
-
 def replaceJson(datFile,key,value,upperKey=None):
 	with open(datFile) as data_file:
 		data = json.load(data_file)
@@ -208,13 +205,6 @@ def replaceJson(datFile,key,value,upperKey=None):
 		data[upperKey][key]=value
 	with open(datFile,'w') as outfile:
 		json.dump(data, outfile)
-
-# def replaceLowerJson(datFile,upperKey,key,value):
-# 	with open(datFile) as data_file:
-# 		data = json.load(data_file)
-# 	data[upperKey][key]=value
-# 	with open(datFile,'w') as outfile:
-# 		json.dump(data, outfile)
 
 def jsonifyCommand(com):
 	#exlusions:
@@ -227,7 +217,6 @@ def jsonifyCommand(com):
 			# buy datsun fresno
 			executeCommand("openb "+"https://"+splitc[2]+".craigslist.org/search/sss?sort=rel&query="+splitc[1])
 			return
-
 	command=readJson(commandFile,com)
 	if command==False:
 		value=raw_input("This command has not been used before, please enter in the command\n:")
@@ -240,6 +229,26 @@ def jsonifyCommand(com):
 		executeCommand(value)
 	else:
 		executeCommand(command)
+
+def shelvify():
+	d = shelve.open("lingFile") # open, with (g)dbm filename -- no suffix
+	d["key"] = "stuff"   # store data at key (overwrites old data if
+	data = d["key"]   # retrieve a COPY of the data at key (raise
+    # delete data stored at key (raises KeyError
+	flag = "key" in d # true if the key exists
+	list = d.keys() # a list of all existing keys (slow!)
+	print data
+	d.close()       # close it
+
+class word:
+    dict info #dict(edge,count)
+    def addEdge(edge):
+    	if edge in info:
+    		info[edge]=info[edge]+1
+    	else:
+    		info[edge]=1
+
+
 
 def editCommands(string=None,command=None):
 	if string=="none":
@@ -261,6 +270,7 @@ def editCommands(string=None,command=None):
 	else:
 		with open(commandFile) as data_file:
 			data=json.load(data_file)
+		
 		template = "{0:30}{1:30}"
 		print template.format("String","Command")
 		for x in data:
@@ -401,33 +411,34 @@ def executeCommand(command):
 		else:
 			stock=getAnswer("What stock would you like to research?").encode('ascii','ignore')
 		say(getStockData(stock))
-	
-	if "settings" in command:
+		subprocess.call(["open","http://stocktwits.com/symbol/"+stock])
+	elif "settings" in command and len(command)==1:
 		changeDefaultSettings()
 	
-	if "ls" in command:
+	elif "ls" in command:
 		template = "{0:20}{1:20}{2:20}"
 		print template.format("Variable","Current","Options")
-		print template.format("loud:",str(loud),"True, False")
-		print template.format("connected:",str(connected),"True, False")+"\n"
+		print template.format("Loud:",str(loud),"True, False")
+		print template.format("Connected:",str(connected),"True, False")
+		print template.format("User:",str(user),"exampleUser")+"\n"
 	
-	if "open" in command:
+	elif "open" in command:
 		if len(command)==2:
 			grabFile(command[1])
 		else:
 			grabFile(getAnswer("What file would you like to open?"))
 		#build reload command 
 	
-	if "openb" in command:
+	elif "openb" in command:
 		subprocess.call(["open",command[1]])
 	
-	if "clear" in command:
+	elif "clear" in command:
 		subprocess.call("clear")
 
-	if "edit" in command and "commands" in command:
+	elif "edit" in command and "commands" in command:
 		editCommands()
 
-	if "google" in command and "open" not in command:
+	elif "google" in command and "open" not in command:
 		search=""
 		word=""
 		for word in command:
@@ -435,14 +446,15 @@ def executeCommand(command):
 				search=search+" "+word
 		subprocess.call(["open","http://www.google.com/search?q="+search])
 	
-	if "study" in command:
+	elif "study" in command:
 		if len(command)==1:
 			studyBuddy()
 		else:
 			studyBuddy(command[1])
+	elif "localsettings" == command[0]:
+		setLocalSettings(command[1],command[2])
 
-
-	if "help" in command:
+	elif "help" in command:
 		template = "{0:10}{1:30}"
 		print template.format("Command","Meaning")
 		print template.format("ls","List all current settings for JAX")
@@ -452,22 +464,26 @@ def executeCommand(command):
 
 #==========================
 
-def startup():
-	setSettings()
-	userInput=""
-	with m as source:
-		r.adjust_for_ambient_noise(source)
-	stop_listening = r.listen_in_background(m, callback)
-	import time
-	time.sleep(1)
-	stop_listening()
+def startup(louds=None,connecteds=None,users=None):
 	
 
+	global loud
+	global connected
+	global user
+	getDefaultSettings()
+	if louds!=None:
+		loud=louds
+	if connecteds!=None:
+		connected=connecteds
+	if users!=None:
+		user=users
+	
+	userInput=""
 	while userInput!="quit()" and userInput!="quit":
 		userInput=getAnswer("Command")
 		jsonifyCommand(userInput)
 
 
 #Startup processes 
-
-startup()
+print("Type jax.startup(loud,connected,user)")
+#startup()
